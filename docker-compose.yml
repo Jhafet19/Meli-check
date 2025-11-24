@@ -1,0 +1,39 @@
+#AQUI SE CONFIGURAN LOS CONTENEDORES
+services:
+  database:
+    image: mysql:8
+    container_name: meli-check
+    environment:
+      MYSQL_ROOT_PASSWORD: root
+      MYSQL_DATABASE: meli-check
+    ports:
+      - "3307:3306"
+    networks:
+      - meli-net
+    volumes:
+      - meli-volume:/var/lib/mysql
+
+  backend:
+    image: server-meli:1.0
+    build:
+      context: ./back
+    container_name: meli-backend
+    environment:
+      SERVER_PORT: 8080
+      DB_HOST: database
+      DB_PORT: 3306
+      DB_NAME: meli-check
+      DB_USER: root
+      DB_PASS: root
+    ports:
+      - "8080:8080"
+    networks:
+      - meli-net
+
+networks:
+  meli-net:
+    external: true
+
+volumes:
+  meli-volume:
+    external: true
