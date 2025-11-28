@@ -10,6 +10,15 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
+import org.example.integradoranarvaez.store.model.StoreEntity;
+import org.example.integradoranarvaez.store.model.StoreRepository;
+import org.example.integradoranarvaez.utils.QrCodeService;
+import com.google.zxing.WriterException;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.MediaType;
+import org.springframework.http.ResponseEntity;
+
+import java.io.IOException;
 import java.util.List;
 
 @Slf4j
@@ -19,9 +28,13 @@ import java.util.List;
 public class StoreController {
 
     private final StoreService storeService;
+    private final StoreRepository storeRepository;   // NUEVO
+    private final QrCodeService qrCodeService;
 
-    public StoreController(StoreService storeService) {
+    public StoreController(StoreService storeService, StoreRepository storeRepository, QrCodeService qrCodeService) {
         this.storeService = storeService;
+        this.storeRepository = storeRepository;
+        this.qrCodeService = qrCodeService;
     }
 
     // =============== CREATE (ADMIN) ==================
@@ -113,5 +126,41 @@ public class StoreController {
         log.info("<== [GET /api/stores/{}] Status {}", id, response.getStatusCode());
 
         return response;
+    }
+
+    @PreAuthorize("hasRole('ADMIN')")
+    @GetMapping(value = "/{id}/qr", produces = MediaType.IMAGE_PNG_VALUE)
+    public ResponseEntity<byte[]> getStoreQr(@PathVariable Long id) {
+
+        log.info("==> [GET /api/stores/{}/qr] Generar QR de tienda", id);
+
+        StoreEntity store = storeRepository.findById(id).orElse(null);
+        if (store == null) {
+            log.info("<== [GET /api/stores/{}/qr] Tienda no encontrada", id);
+            return ResponseEntity.notFound().build();
+        }
+
+        String qrText = store.getQrCode(); // el token que ya generas en StoreService
+
+        try {
+            byte[] imageBytes = qrCodeService.generateQrPng(qrText, 300, 300);
+
+            HttpHeaders headers = new HttpHeaders();
+            headers.setContentType(MediaType.IMAGE_PNG);
+            // inline para mostrarlo en navegador, attachment si quieres forzar descarga
+            headers.set(HttpHeaders.CONTENT_DISPOSITION,
+                    "inline; filename=\"store-" + id + "-qr.png\"");
+
+            log.info("<== [GET /api/stores/{}/qr] QR generado OK", id);
+
+            return ResponseEntity
+                    .ok()
+                    .headers(headers)
+                    .body(imageBytes);
+
+        } catch (WriterException | IOException e) {
+            log.error("[GET /api/stores/{}/qr] Error generando QR: {}", id, e.getMessage(), e);
+            return ResponseEntity.internalServerError().build();
+        }
     }
 }
