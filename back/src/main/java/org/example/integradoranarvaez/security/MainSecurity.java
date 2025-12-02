@@ -58,8 +58,8 @@ public class MainSecurity {
 
     @Bean
     public AuthenticationProvider authenticationProvider() {
-        DaoAuthenticationProvider dao = new DaoAuthenticationProvider(userDetailsService);
-        dao.setPasswordEncoder(passwordEncoder());
+        DaoAuthenticationProvider dao = new DaoAuthenticationProvider();
+        dao.setUserDetailsService(userDetailsService);
         return dao;
     }
 
