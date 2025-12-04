@@ -3,6 +3,7 @@ package org.example.integradoranarvaez.user.model;
 
 import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.Pattern;
+import org.example.integradoranarvaez.validation.ValidationGroups;
 
 public class UserDTO {
     private Long id;
@@ -29,6 +30,7 @@ public class UserDTO {
     @Email(message = "El correo debe tener un formato válido.")
     private String email;
     @Pattern(
+            groups = ValidationGroups.OnCreate.class,
             regexp = "^(?=.*[a-z])(?=.*[A-Z])(?=.*\\d)(?=.*[@$!%*?&])[A-Za-z\\d@$!%*?&]{8,}$",
             message = "La contraseña debe tener al menos 8 caracteres, incluyendo una mayúscula, una minúscula, un número y un símbolo."
     )

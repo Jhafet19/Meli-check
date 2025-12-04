@@ -475,4 +475,43 @@ public class AssignmentService {
                 new Message("Asignaciones por tienda", list, TypesResponse.SUCCESS)
         );
     }
+
+    public ResponseEntity<Message> findMyAssignmentById(Long id) {
+
+        String email = SecurityContextHolder.getContext().getAuthentication().getName();
+
+        Optional<UserEntity> optUser = userRepository.findByEmail(email);
+        if (optUser.isEmpty()) {
+            return new ResponseEntity<>(
+                    new Message("Usuario no encontrado", null, TypesResponse.WARNING),
+                    HttpStatus.NOT_FOUND
+            );
+        }
+
+        Long dealerId = optUser.get().getId();
+
+        Optional<AssignmentEntity> optAssignment = assignmentRepository.findById(id);
+
+        if (optAssignment.isEmpty()) {
+            return new ResponseEntity<>(
+                    new Message("Asignación no encontrada", null, TypesResponse.WARNING),
+                    HttpStatus.NOT_FOUND
+            );
+        }
+
+        AssignmentEntity assignment = optAssignment.get();
+
+        // Validar que la asignación pertenece al dealer
+        if (!assignment.getDealer().getId().equals(dealerId)) {
+            return new ResponseEntity<>(
+                    new Message("No tienes permiso para ver esta asignación", null, TypesResponse.WARNING),
+                    HttpStatus.FORBIDDEN
+            );
+        }
+
+        return ResponseEntity.ok(
+                new Message("Asignación encontrada", assignment, TypesResponse.SUCCESS)
+        );
+    }
+
 }

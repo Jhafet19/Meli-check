@@ -157,4 +157,12 @@ public class AssignmentController {
         log.info("<== [GET /api/assignments/me] Total asignaciones activas: {}", size);
         return response;
     }
+
+    // =============== FIND ONE FOR DEALER ==================
+    @PreAuthorize("hasRole('DEALER')")
+    @GetMapping("/me/{id}")
+    public ResponseEntity<Message> getMyAssignmentById(@PathVariable Long id) {
+        return assignmentService.findMyAssignmentById(id);
+    }
+
 }

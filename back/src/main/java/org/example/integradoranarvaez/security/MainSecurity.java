@@ -1,6 +1,6 @@
 package org.example.integradoranarvaez.security;
 
-import org.example.integradoranarvaez.security.filters.AuthFilter;
+import org.example.integradoranarvaez.security.token.JwtAuthentication;
 import org.example.integradoranarvaez.security.token.UserDetailsServiceImpl;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Bean;
@@ -28,7 +28,7 @@ import org.springframework.security.web.authentication.UsernamePasswordAuthentic
 public class MainSecurity {
 
     @Autowired
-    private AuthFilter authFilter;
+    private JwtAuthentication jwtAuthenticationFilter;
 
     private final UserDetailsServiceImpl userDetailsService;
 
@@ -60,6 +60,7 @@ public class MainSecurity {
     public AuthenticationProvider authenticationProvider() {
         DaoAuthenticationProvider dao = new DaoAuthenticationProvider();
         dao.setUserDetailsService(userDetailsService);
+        dao.setPasswordEncoder(passwordEncoder());
         return dao;
     }
 
@@ -81,7 +82,7 @@ public class MainSecurity {
                 .headers(headers -> headers.frameOptions(HeadersConfigurer.FrameOptionsConfig::sameOrigin))
                 .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .authenticationProvider(authenticationProvider())
-                .addFilterBefore(authFilter, UsernamePasswordAuthenticationFilter.class)
+                .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class)
                 .logout(logout -> logout.logoutUrl("/cursos/auth/logout").clearAuthentication(true));
 
         return http.build();

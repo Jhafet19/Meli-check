@@ -6,11 +6,13 @@ import org.example.integradoranarvaez.user.model.ChangePasswordDTO;
 import org.example.integradoranarvaez.user.model.UserDTO;
 import org.example.integradoranarvaez.user.model.UserService;
 import org.example.integradoranarvaez.utils.Message;
+import org.example.integradoranarvaez.validation.ValidationGroups;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -71,7 +73,8 @@ public class UserController {
 
     @PreAuthorize("hasRole('ADMIN')")
     @PostMapping("/dealer")
-    public ResponseEntity<Message> createDealer(@Valid @RequestBody UserDTO dto) {
+    public ResponseEntity<Message> createDealer(
+            @Validated(ValidationGroups.OnCreate.class) @RequestBody UserDTO dto) {
         return userService.createDealer(dto);
     }
 
@@ -117,13 +120,12 @@ public class UserController {
     @PutMapping("/{id}")
     public ResponseEntity<Message> updateUser(
             @PathVariable Long id,
-            @Valid @RequestBody UserDTO dto) {
+            @Validated(ValidationGroups.OnUpdate.class) @RequestBody UserDTO dto) {
 
         log.info("==> [PUT /{}] Entrando. Actualizar usuario ID {}", id, id);
         ResponseEntity<Message> response = userService.updateUser(id, dto);
 
         log.info("<== [PUT /{}] Terminando. Status: {}", id, response.getStatusCode());
-
         return response;
     }
 
@@ -153,6 +155,14 @@ public class UserController {
 
         return response;
     }
+
+    @PreAuthorize("hasRole('ADMIN')")
+    @GetMapping("/{id}")
+    public ResponseEntity<Message> findOne(@PathVariable Long id) {
+        return userService.findOneById(id);
+    }
+
+
 
 
     /*

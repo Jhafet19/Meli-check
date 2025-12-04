@@ -1,9 +1,11 @@
 package org.example.integradoranarvaez.assignment_type;
 
 import jakarta.persistence.*;
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 
 @Entity
 @Table(name = "assignment_types")
+@JsonIgnoreProperties({"hibernateLazyInitializer", "handler"})
 public class AssignmentTypeEntity {
 
     @Id

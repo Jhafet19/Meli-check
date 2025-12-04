@@ -4,12 +4,14 @@ import jakarta.persistence.*;
 import org.example.integradoranarvaez.assignment_type.AssignmentTypeEntity;
 import org.example.integradoranarvaez.store.model.StoreEntity;
 import org.example.integradoranarvaez.user.model.UserEntity;
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 
 @Entity
 @Table(name = "assignments")
+@JsonIgnoreProperties({"hibernateLazyInitializer", "handler"})
 public class AssignmentEntity {
 
     @Id

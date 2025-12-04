@@ -436,4 +436,41 @@ public class UserService {
                 new Message("Contraseña actualizada", null, TypesResponse.SUCCESS)
         );
     }
+
+    public ResponseEntity<Message> findOne(Long id) {
+
+        log.info("==> [findOne] Buscando usuario por ID {}", id);
+
+        Optional<UserEntity> opt = repository.findById(id);
+
+        if (opt.isEmpty()) {
+            log.info("==> [findOne] Usuario no encontrado ID {}", id);
+            return new ResponseEntity<>(
+                    new Message("Usuario no encontrado", null, TypesResponse.WARNING),
+                    HttpStatus.NOT_FOUND
+            );
+        }
+
+        UserEntity user = opt.get();
+
+        log.info("==> [findOne] Usuario encontrado ID {} Email {}", id, user.getEmail());
+
+        return ResponseEntity.ok(
+                new Message("Usuario encontrado", user, TypesResponse.SUCCESS)
+        );
+    }
+
+    public ResponseEntity<Message> findOneById(Long id) {
+        Optional<UserEntity> opt = repository.findById(id);
+
+        if (opt.isEmpty()) {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND)
+                    .body(new Message("Usuario no encontrado", null, TypesResponse.WARNING));
+        }
+
+        return ResponseEntity.ok(
+                new Message("Usuario encontrado", opt.get(), TypesResponse.SUCCESS));
+    }
+
+
 }
