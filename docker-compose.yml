@@ -1,39 +1,53 @@
-#AQUI SE CONFIGURAN LOS CONTENEDORES
 services:
   database:
-    image: mysql:8
-    container_name: meli-check
+    image: mysql:8.0
+    container_name: melicheck-database
+    restart: always
     environment:
       MYSQL_ROOT_PASSWORD: root
       MYSQL_DATABASE: meli-check
     ports:
-      - "3307:3306"
-    networks:
-      - meli-net
+      - "3307:3306"      # Exponer si quieres conectarte desde tu host
     volumes:
-      - meli-volume:/var/lib/mysql
+      - melicheck-db-data:/var/lib/mysql
+    networks:
+      - melicheck-net
 
   backend:
-    image: server-meli:1.0
     build:
       context: ./back
-    container_name: meli-backend
+      dockerfile: Dockerfile
+    container_name: melicheck-backend
+    restart: always
+    depends_on:
+      - database
     environment:
-      SERVER_PORT: 8080
-      DB_HOST: database
+      # Estas variables pisan lo que tienes en application.properties
+      DB_HOST: database          # nombre del servicio de la BD en docker-compose
       DB_PORT: 3306
       DB_NAME: meli-check
       DB_USER: root
       DB_PASS: root
+
+      # Opcional: puerto y JWT desde variables:
+      SERVER_PORT: 8081          # sobreescribe server.port=8081 si quisieras cambiarlo
+      JWT_SECRET: feSLZrm7QpEPMc3TY9B2erBaf6lOjLny5dRUd9h4BBo
+      JWT_EXPIRATION: 604800
+
+      # Por si usas perfiles
+      # SPRING_PROFILES_ACTIVE: prod
+
     ports:
-      - "8080:8080"
+      - "8081:8081"              # host:container
+    volumes:
+      # Para que las subidas de archivos no se pierdan al borrar el contenedor
+      - ./uploads:/app/uploads
     networks:
-      - meli-net
+      - melicheck-net
 
 networks:
-  meli-net:
-    external: true
+  melicheck-net:
+    driver: bridge
 
 volumes:
-  meli-volume:
-    external: true
+  melicheck-db-data:
