@@ -14,6 +14,8 @@ public interface AssignmentRepository extends JpaRepository<AssignmentEntity, Lo
 
     List<AssignmentEntity> findAllByStore_Id(Long storeId);
 
+    List<AssignmentEntity> findAllByDealer_IdAndStore_IdAndIsActiveTrue(Long dealerId, Long storeId);
+
     List<AssignmentEntity> findAllByStore_IdAndIsActiveTrue(Long storeId);
 
     boolean existsByDealer_IdAndStore_IdAndIsActiveTrue(Long dealerId, Long storeId);

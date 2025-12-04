@@ -2,6 +2,7 @@ package org.example.integradoranarvaez.user.model;
 
 import jakarta.persistence.*;
 import org.example.integradoranarvaez.model.RoleEntity;
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 
 
 import java.time.LocalDateTime;
@@ -10,6 +11,7 @@ import java.util.List;
 
 @Entity
 @Table(name = "users")
+@JsonIgnoreProperties({"hibernateLazyInitializer", "handler"})
 public class UserEntity {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)

@@ -3,6 +3,7 @@ package org.example.integradoranarvaez.security.token;
 import io.jsonwebtoken.*;
 import io.jsonwebtoken.io.Decoders;
 import io.jsonwebtoken.security.Keys;
+import jakarta.annotation.PostConstruct;
 import jakarta.servlet.http.HttpServletRequest;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.security.core.Authentication;
@@ -11,6 +12,7 @@ import org.springframework.stereotype.Service;
 
 import java.security.Key;
 import java.util.Date;
+import java.util.List;
 
 
 @Service
@@ -31,13 +33,23 @@ public class JwtProvider {
         Date now = new Date();
         Date expiryDate = new Date(now.getTime() + expiration * 1000);
 
+        // Obtener los roles del usuario
+        List<String> roles = userDetails.getAuthorities()
+                .stream()
+                .map(auth -> auth.getAuthority())
+                .toList();
+
         return Jwts.builder()
-                .setSubject(userDetails.getUsername()) // Aquí usamos username o email
+                .setSubject(userDetails.getUsername())
+                .claim("roles", roles)  // ⬅️ MUY IMPORTANTE
                 .setIssuedAt(now)
                 .setExpiration(expiryDate)
                 .signWith(getSignKey(), SignatureAlgorithm.HS256)
                 .compact();
     }
+
+
+
 
     // Obtener la clave secreta
     private Key getSignKey() {
@@ -114,5 +126,10 @@ public class JwtProvider {
                 .build()
                 .parseClaimsJws(token)
                 .getBody();
+    }
+
+    @PostConstruct
+    public void showSecret() {
+        System.out.println("SECRET JWT USADO: " + secret);
     }
 }
