@@ -20,10 +20,11 @@ import org.springframework.security.access.AccessDeniedException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import jakarta.annotation.PostConstruct;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
-import java.util.List;
-import java.util.Optional;
+import java.util.*;
+import java.util.stream.Collectors;
 
 @Service
 @Transactional
@@ -50,6 +51,56 @@ public class VisitService {
         this.userService = userService;
         this.visitStatusRepository = visitStatusRepository;
         this.assignmentRepository = assignmentRepository;
+    }
+
+    // =============== LIMPIEZA DE DUPLICADOS AL INICIAR ==================
+    @PostConstruct
+    public void cleanupDuplicates() {
+        try {
+            log.info("==> Verificando duplicados de visitas...");
+
+            // Obtener todas las visitas
+            List<VisitEntity> allVisits = visitRepository.findAll();
+
+            // Agrupar por (dealer, store, visitDate, status)
+            Map<String, List<VisitEntity>> grouped = allVisits.stream()
+                    .collect(Collectors.groupingBy(v ->
+                            v.getDealer().getId() + "-" +
+                                    v.getStore().getId() + "-" +
+                                    v.getVisitDate() + "-" +
+                                    v.getStatus().getId()
+                    ));
+
+            // Encontrar duplicados y eliminar los más recientes
+            int deletedCount = 0;
+            for (Map.Entry<String, List<VisitEntity>> entry : grouped.entrySet()) {
+                List<VisitEntity> duplicates = entry.getValue();
+                if (duplicates.size() > 1) {
+                    // Ordenar por ID (el menor ID es el más antiguo)
+                    duplicates.sort(Comparator.comparing(VisitEntity::getId));
+
+                    // Eliminar todos excepto el primero (el más antiguo)
+                    for (int i = 1; i < duplicates.size(); i++) {
+                        VisitEntity toDelete = duplicates.get(i);
+                        log.info("Eliminando visita duplicada ID: {}, Dealer: {}, Store: {}, Fecha: {}",
+                                toDelete.getId(),
+                                toDelete.getDealer().getId(),
+                                toDelete.getStore().getId(),
+                                toDelete.getVisitDate());
+                        visitRepository.delete(toDelete);
+                        deletedCount++;
+                    }
+                }
+            }
+
+            if (deletedCount > 0) {
+                log.info("<== Limpieza completada: {} visitas duplicadas eliminadas", deletedCount);
+            } else {
+                log.info("<== No se encontraron duplicados");
+            }
+        } catch (Exception e) {
+            log.error("Error al limpiar duplicados: {}", e.getMessage(), e);
+        }
     }
 
     // =============== CHECK-IN POR QR ==================
@@ -133,11 +184,12 @@ public class VisitService {
         // 7. Buscar visita PLANNED para hoy o crear una nueva
         VisitEntity visit = null;
 
-        Optional<VisitEntity> plannedVisitOpt = visitRepository
-                .findPlannedVisitByQrAndDealer(qrCode, dealerId);
+        List<VisitEntity> plannedVisits = visitRepository
+                .findPlannedVisitsByQrAndDealer(qrCode, dealerId);
 
-        if (plannedVisitOpt.isPresent()) {
-            visit = plannedVisitOpt.get();
+        if (!plannedVisits.isEmpty()) {
+            // Tomar la primera visita (la más antigua)
+            visit = plannedVisits.get(0);
             log.info("==> [VisitService.checkInByQr] Visita planificada encontrada: {}", visit.getId());
         } else {
             // Crear nueva visita
@@ -358,6 +410,7 @@ public class VisitService {
     }
 
     // =============== LISTAR VISITAS DE HOY POR DEALER ==================
+    @Transactional
     public ResponseEntity<Message> getTodayVisitsByDealer() {
 
         Long dealerId = userService.getCurrentUserId();
@@ -365,12 +418,44 @@ public class VisitService {
 
         log.info("==> [VisitService.getTodayVisitsByDealer] Dealer: {}, Fecha: {}", dealerId, today);
 
-        List<VisitEntity> visits = visitRepository.findAllByDealer_IdAndVisitDate(dealerId, today);
+        // 1. Buscar visitas existentes para hoy
+        List<VisitEntity> existingVisits = visitRepository.findAllByDealer_IdAndVisitDate(dealerId, today);
 
-        log.info("<== [VisitService.getTodayVisitsByDealer] Total visitas: {}", visits.size());
+        log.info("==> [VisitService.getTodayVisitsByDealer] Visitas existentes: {}", existingVisits.size());
+
+        // 2. Obtener todas las asignaciones activas del dealer
+        List<AssignmentEntity> activeAssignments = assignmentRepository.findAllByDealer_IdAndIsActiveTrue(dealerId);
+
+        log.info("==> [VisitService.getTodayVisitsByDealer] Asignaciones activas: {}", activeAssignments.size());
+
+        // 3. Crear visitas PLANNED para asignaciones válidas que aún no tienen visita hoy
+        VisitStatusEntity plannedStatus = visitStatusRepository.findByCode(VisitStatusEnum.PLANNED)
+                .orElseThrow(() -> new RuntimeException("Estado PLANNED no encontrado"));
+
+        for (AssignmentEntity assignment : activeAssignments) {
+            // Verificar si esta asignación es válida para hoy
+            if (isAssignmentValidForDate(assignment, today)) {
+                // Verificar si ya existe una visita para esta tienda hoy (cualquier estado)
+                boolean visitExists = existingVisits.stream()
+                        .anyMatch(v -> v.getStore().getId().equals(assignment.getStore().getId()));
+
+                if (!visitExists) {
+                    // Intentar crear visita de manera thread-safe
+                    VisitEntity newVisit = findOrCreatePlannedVisit(dealerId, assignment.getStore().getId(), today, assignment, plannedStatus);
+
+                    if (newVisit != null && !existingVisits.contains(newVisit)) {
+                        existingVisits.add(newVisit);
+                        log.info("==> [VisitService.getTodayVisitsByDealer] Visita planificada creada para tienda: {}",
+                                assignment.getStore().getName());
+                    }
+                }
+            }
+        }
+
+        log.info("<== [VisitService.getTodayVisitsByDealer] Total visitas (incluyendo generadas): {}", existingVisits.size());
 
         return ResponseEntity.ok(
-                new Message("Visitas de hoy encontradas", visits, TypesResponse.SUCCESS)
+                new Message("Visitas de hoy encontradas", existingVisits, TypesResponse.SUCCESS)
         );
     }
 
@@ -612,5 +697,46 @@ public class VisitService {
         return ResponseEntity.ok(
                 new Message("Visita actualizada exitosamente", visit, TypesResponse.SUCCESS)
         );
+    }
+
+    // =============== MÉTODO AUXILIAR THREAD-SAFE PARA EVITAR DUPLICADOS ==================
+    /**
+     * Busca o crea una visita PLANNED de manera thread-safe.
+     * Este método usa synchronized para evitar race conditions cuando múltiples
+     * llamadas simultáneas intentan crear la misma visita.
+     */
+    private synchronized VisitEntity findOrCreatePlannedVisit(Long dealerId, Long storeId, LocalDate visitDate,
+                                                              AssignmentEntity assignment, VisitStatusEntity plannedStatus) {
+        // Usar consulta específica para verificar si existe
+        Optional<VisitEntity> existingVisit = visitRepository
+                .findByDealerStoreAndDateAndStatus(dealerId, storeId, visitDate, plannedStatus.getId());
+
+        if (existingVisit.isPresent()) {
+            // Ya existe, devolver la encontrada
+            log.debug("Visita ya existe para dealer: {}, tienda: {}, fecha: {}", dealerId, storeId, visitDate);
+            return existingVisit.get();
+        }
+
+        // No existe, crear una nueva
+        VisitEntity newVisit = new VisitEntity();
+        newVisit.setDealer(assignment.getDealer());
+        newVisit.setStore(assignment.getStore());
+        newVisit.setAssignment(assignment);
+        newVisit.setStatus(plannedStatus);
+        newVisit.setVisitDate(visitDate);
+        newVisit.setScheduledDate(visitDate);
+        newVisit.setOrigin(VisitOrigin.AUTO_GENERATED);
+        newVisit.setIsActive(true);
+        newVisit.setCreatedAt(LocalDateTime.now());
+
+        try {
+            return visitRepository.save(newVisit);
+        } catch (Exception e) {
+            // Si falla (por ejemplo, por un constraint unique o duplicado), buscar de nuevo
+            log.warn("Error al crear visita (posible duplicado), reintentando búsqueda: {}", e.getMessage());
+            Optional<VisitEntity> retry = visitRepository
+                    .findByDealerStoreAndDateAndStatus(dealerId, storeId, visitDate, plannedStatus.getId());
+            return retry.orElse(null);
+        }
     }
 }

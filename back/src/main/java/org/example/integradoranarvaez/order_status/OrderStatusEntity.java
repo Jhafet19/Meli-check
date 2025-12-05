@@ -1,9 +1,11 @@
 package org.example.integradoranarvaez.order_status;
 
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import jakarta.persistence.*;
 
 @Entity
 @Table(name = "order_status")
+@JsonIgnoreProperties({"hibernateLazyInitializer", "handler"})
 public class OrderStatusEntity {
 
     @Id

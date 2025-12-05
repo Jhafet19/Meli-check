@@ -56,9 +56,10 @@ public interface VisitRepository extends JpaRepository<VisitEntity, Long> {
             "v.store.qrCode = :qrCode AND " +
             "v.dealer.id = :dealerId AND " +
             "v.visitDate = CURRENT_DATE AND " +
-            "v.status.code = org.example.integradoranarvaez.visit_status.VisitStatusEnum.PLANNED")
-    Optional<VisitEntity> findPlannedVisitByQrAndDealer(@Param("qrCode") String qrCode,
-                                                        @Param("dealerId") Long dealerId);
+            "v.status.code = org.example.integradoranarvaez.visit_status.VisitStatusEnum.PLANNED " +
+            "ORDER BY v.createdAt ASC")
+    List<VisitEntity> findPlannedVisitsByQrAndDealer(@Param("qrCode") String qrCode,
+                                                     @Param("dealerId") Long dealerId);
 
     @Query("SELECT v FROM VisitEntity v WHERE " +
             "v.assignment.id = :assignmentId")
@@ -71,4 +72,14 @@ public interface VisitRepository extends JpaRepository<VisitEntity, Long> {
             "v.status.code = org.example.integradoranarvaez.visit_status.VisitStatusEnum.COMPLETED")
     Integer countCompletedVisitsByDealerAndDate(@Param("dealerId") Long dealerId,
                                                 @Param("date") LocalDate date);
+
+    @Query("SELECT v FROM VisitEntity v WHERE " +
+            "v.dealer.id = :dealerId AND " +
+            "v.store.id = :storeId AND " +
+            "v.visitDate = :visitDate AND " +
+            "v.status.id = :statusId")
+    Optional<VisitEntity> findByDealerStoreAndDateAndStatus(@Param("dealerId") Long dealerId,
+                                                            @Param("storeId") Long storeId,
+                                                            @Param("visitDate") LocalDate visitDate,
+                                                            @Param("statusId") Long statusId);
 }

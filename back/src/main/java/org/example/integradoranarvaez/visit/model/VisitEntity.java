@@ -1,6 +1,7 @@
 package org.example.integradoranarvaez.visit.model;
 
 
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import jakarta.persistence.*;
 import org.example.integradoranarvaez.assignment.model.AssignmentEntity;
 import org.example.integradoranarvaez.store.model.StoreEntity;
@@ -14,6 +15,7 @@ import java.time.LocalDateTime;
 
 @Entity
 @Table(name = "visits")
+@JsonIgnoreProperties({"hibernateLazyInitializer", "handler"})
 public class VisitEntity {
 
     @Id
