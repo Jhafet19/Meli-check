@@ -364,4 +364,33 @@ public class OrderService {
                 new Message("Pedido cancelado", order, TypesResponse.SUCCESS)
         );
     }
+
+    // =============== FILTRAR PEDIDOS (ADMIN) ==================
+    public ResponseEntity<Message> filterOrders(Long dealerId, Long storeId, OrderStatusEnum status, LocalDate startDate, LocalDate endDate) {
+
+        log.info("==> [OrderService.filterOrders] dealer={}, store={}, status={}, startDate={}, endDate={}",
+                dealerId, storeId, status, startDate, endDate);
+
+        List<OrderEntity> allOrders = orderRepository.findAll();
+
+        // Filtrado manual
+        List<OrderEntity> filteredOrders = allOrders.stream()
+                .filter(order -> dealerId == null || order.getDealer().getId().equals(dealerId))
+                .filter(order -> storeId == null || order.getStore().getId().equals(storeId))
+                .filter(order -> status == null || order.getStatus().getCode() == status)
+                .filter(order -> {
+                    if (startDate == null && endDate == null) return true;
+                    LocalDate orderDate = order.getCreatedAt().toLocalDate();
+                    boolean afterStart = startDate == null || !orderDate.isBefore(startDate);
+                    boolean beforeEnd = endDate == null || !orderDate.isAfter(endDate);
+                    return afterStart && beforeEnd;
+                })
+                .toList();
+
+        log.info("<== [OrderService.filterOrders] Total filtered: {}", filteredOrders.size());
+
+        return ResponseEntity.ok(
+                new Message("Pedidos filtrados", filteredOrders, TypesResponse.SUCCESS)
+        );
+    }
 }
