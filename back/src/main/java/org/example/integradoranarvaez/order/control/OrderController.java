@@ -4,10 +4,14 @@ import jakarta.validation.Valid;
 import lombok.extern.slf4j.Slf4j;
 import org.example.integradoranarvaez.order.model.OrderDTO;
 import org.example.integradoranarvaez.order.model.OrderService;
+import org.example.integradoranarvaez.order_status.OrderStatusEnum;
 import org.example.integradoranarvaez.utils.Message;
+import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
+
+import java.time.LocalDate;
 
 @Slf4j
 @RestController
@@ -117,6 +121,25 @@ public class OrderController {
         ResponseEntity<Message> response = orderService.getOrdersByDealer();
 
         log.info("<== [GET /api/orders/my-orders] Status: {}", response.getStatusCode());
+
+        return response;
+    }
+
+    // =============== FILTRAR PEDIDOS (ADMIN) ==================
+    @PreAuthorize("hasRole('ADMIN')")
+    @GetMapping("/filter")
+    public ResponseEntity<Message> filterOrders(
+            @RequestParam(required = false) Long dealerId,
+            @RequestParam(required = false) Long storeId,
+            @RequestParam(required = false) OrderStatusEnum status,
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate startDate,
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate endDate) {
+
+        log.info("==> [GET /api/orders/filter]");
+
+        ResponseEntity<Message> response = orderService.filterOrders(dealerId, storeId, status, startDate, endDate);
+
+        log.info("<== [GET /api/orders/filter] Status: {}", response.getStatusCode());
 
         return response;
     }
