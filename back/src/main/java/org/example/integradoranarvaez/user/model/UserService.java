@@ -472,5 +472,25 @@ public class UserService {
                 new Message("Usuario encontrado", opt.get(), TypesResponse.SUCCESS));
     }
 
+    @Transactional(rollbackFor = SQLException.class)
+    public ResponseEntity<Message> saveFcmToken(String email, String fcmToken) {
+        log.info("==> [saveFcmToken] Guardando token FCM para usuario {}", email);
+
+        Optional<UserEntity> opt = repository.findByEmail(email);
+        if (opt.isEmpty()) {
+            log.error("==> [saveFcmToken] Usuario no encontrado: {}", email);
+            return ResponseEntity.status(HttpStatus.NOT_FOUND)
+                    .body(new Message("Usuario no encontrado", null, TypesResponse.WARNING));
+        }
+
+        UserEntity user = opt.get();
+        user.setFcmToken(fcmToken);
+        repository.save(user);
+
+        log.info("==> [saveFcmToken] Token FCM guardado exitosamente para usuario ID {}", user.getId());
+
+        return ResponseEntity.ok(new Message("Token FCM guardado", null, TypesResponse.SUCCESS));
+    }
+
 
 }

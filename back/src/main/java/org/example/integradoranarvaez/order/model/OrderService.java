@@ -1,5 +1,7 @@
 package org.example.integradoranarvaez.order.model;
 
+import org.example.integradoranarvaez.notification.model.NotificationService;
+import org.example.integradoranarvaez.notification_type.NotificationTypeEnum;
 import org.example.integradoranarvaez.order_item.model.OrderItemEntity;
 import org.example.integradoranarvaez.order_item.model.OrderItemRepository;
 import org.example.integradoranarvaez.order_status.OrderStatusEntity;
@@ -9,7 +11,9 @@ import org.example.integradoranarvaez.product.model.ProductEntity;
 import org.example.integradoranarvaez.product.model.ProductRepository;
 import org.example.integradoranarvaez.store.model.StoreEntity;
 import org.example.integradoranarvaez.user.model.UserEntity;
+import org.example.integradoranarvaez.user.model.UserRepository;
 import org.example.integradoranarvaez.user.model.UserService;
+import org.example.integradoranarvaez.model.RoleEnum;
 import org.example.integradoranarvaez.utils.Message;
 import org.example.integradoranarvaez.utils.TypesResponse;
 import org.example.integradoranarvaez.visit.model.VisitEntity;
@@ -42,19 +46,25 @@ public class OrderService {
     private final ProductRepository productRepository;
     private final OrderStatusRepository orderStatusRepository;
     private final UserService userService;
+    private final NotificationService notificationService;
+    private final UserRepository userRepository;
 
     public OrderService(OrderRepository orderRepository,
                         OrderItemRepository orderItemRepository,
                         VisitRepository visitRepository,
                         ProductRepository productRepository,
                         OrderStatusRepository orderStatusRepository,
-                        UserService userService) {
+                        UserService userService,
+                        NotificationService notificationService,
+                        UserRepository userRepository) {
         this.orderRepository = orderRepository;
         this.orderItemRepository = orderItemRepository;
         this.visitRepository = visitRepository;
         this.productRepository = productRepository;
         this.orderStatusRepository = orderStatusRepository;
         this.userService = userService;
+        this.notificationService = notificationService;
+        this.userRepository = userRepository;
     }
 
     // =============== CREAR PEDIDO (DRAFT) ==================
@@ -260,6 +270,29 @@ public class OrderService {
         order = orderRepository.save(order);
 
         log.info("<== [OrderService.sendOrder] Pedido enviado ID: {}, Fecha: {}", orderId, order.getSentAt());
+
+        // Notificar a todos los administradores
+        try {
+            List<UserEntity> admins = userRepository.findAllByRole_RoleEnum(RoleEnum.ADMIN);
+            for (UserEntity admin : admins) {
+                String title = "Nuevo pedido enviado";
+                String message = String.format("El repartidor %s %s ha enviado un nuevo pedido para la tienda %s",
+                        order.getDealer().getName(),
+                        order.getDealer().getLastName(),
+                        order.getStore().getName());
+                notificationService.createNotification(
+                        admin.getId(),
+                        NotificationTypeEnum.NEW_ORDER_SENT,
+                        title,
+                        message,
+                        orderId
+                );
+            }
+            log.info("Notificaciones enviadas a administradores por pedido ID: {}", orderId);
+        } catch (Exception e) {
+            log.error("Error al enviar notificaciones de pedido: {}", e.getMessage());
+            // No fallar el pedido si la notificación falla
+        }
 
         return ResponseEntity.ok(
                 new Message("Pedido enviado exitosamente", order, TypesResponse.SUCCESS)

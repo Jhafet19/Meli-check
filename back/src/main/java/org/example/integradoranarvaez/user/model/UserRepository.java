@@ -1,6 +1,7 @@
 package org.example.integradoranarvaez.user.model;
 
 import org.example.integradoranarvaez.model.RoleEntity;
+import org.example.integradoranarvaez.model.RoleEnum;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.stereotype.Repository;
 
@@ -13,4 +14,5 @@ public interface UserRepository extends JpaRepository<UserEntity, Long> {
     boolean existsByEmail(String correo);
 
     List<UserEntity> findAllByRole(RoleEntity roleEntity);
+    List<UserEntity> findAllByRole_RoleEnum(RoleEnum roleEnum);
 }

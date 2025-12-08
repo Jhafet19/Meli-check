@@ -1,8 +1,8 @@
 package org.example.integradoranarvaez.user.model;
 
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import jakarta.persistence.*;
 import org.example.integradoranarvaez.model.RoleEntity;
-import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 
 
 import java.time.LocalDateTime;
@@ -47,6 +47,9 @@ public class UserEntity {
 
     @Column(name = "lock_time")
     private LocalDateTime lockTime;
+
+    @Column(name = "fcm_token", length = 500)
+    private String fcmToken;
 
     public UserEntity() {
     }
@@ -160,5 +163,13 @@ public class UserEntity {
 
     public void setLockTime(LocalDateTime lockTime) {
         this.lockTime = lockTime;
+    }
+
+    public String getFcmToken() {
+        return fcmToken;
+    }
+
+    public void setFcmToken(String fcmToken) {
+        this.fcmToken = fcmToken;
     }
 }
