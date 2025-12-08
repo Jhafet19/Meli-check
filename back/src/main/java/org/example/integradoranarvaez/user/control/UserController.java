@@ -162,6 +162,19 @@ public class UserController {
         return userService.findOneById(id);
     }
 
+    @PreAuthorize("isAuthenticated()")
+    @PostMapping("/fcm-token")
+    public ResponseEntity<Message> saveFcmToken(@RequestBody java.util.Map<String, String> body) {
+        String email = SecurityContextHolder.getContext().getAuthentication().getName();
+        String fcmToken = body.get("fcmToken");
+
+        log.info("==> [POST /fcm-token] Guardando token FCM para usuario {}", email);
+        ResponseEntity<Message> response = userService.saveFcmToken(email, fcmToken);
+        log.info("<== [POST /fcm-token] Token guardado. Status: {}", response.getStatusCode());
+
+        return response;
+    }
+
 
 
 

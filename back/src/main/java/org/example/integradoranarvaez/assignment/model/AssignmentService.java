@@ -3,10 +3,13 @@ package org.example.integradoranarvaez.assignment.model;
 import org.example.integradoranarvaez.assignment_type.AssignmentTypeEntity;
 import org.example.integradoranarvaez.assignment_type.AssignmentTypeEnum;
 import org.example.integradoranarvaez.assignment_type.AssignmentTypeRepository;
+import org.example.integradoranarvaez.notification.model.NotificationService;
+import org.example.integradoranarvaez.notification_type.NotificationTypeEnum;
 import org.example.integradoranarvaez.store.model.StoreEntity;
 import org.example.integradoranarvaez.store.model.StoreRepository;
 import org.example.integradoranarvaez.user.model.UserEntity;
 import org.example.integradoranarvaez.user.model.UserRepository;
+import org.example.integradoranarvaez.model.RoleEnum;
 import org.example.integradoranarvaez.utils.Message;
 import org.example.integradoranarvaez.utils.TypesResponse;
 import org.slf4j.Logger;
@@ -33,15 +36,18 @@ public class AssignmentService {
     private final UserRepository userRepository;
     private final StoreRepository storeRepository;
     private final AssignmentTypeRepository assignmentTypeRepository;
+    private final NotificationService notificationService;
 
     public AssignmentService(AssignmentRepository assignmentRepository,
                              UserRepository userRepository,
                              StoreRepository storeRepository,
-                             AssignmentTypeRepository assignmentTypeRepository) {
+                             AssignmentTypeRepository assignmentTypeRepository,
+                             NotificationService notificationService) {
         this.assignmentRepository = assignmentRepository;
         this.userRepository = userRepository;
         this.storeRepository = storeRepository;
         this.assignmentTypeRepository = assignmentTypeRepository;
+        this.notificationService = notificationService;
     }
 
     // =============== CREATE ==================
@@ -177,6 +183,62 @@ public class AssignmentService {
             assignment = assignmentRepository.saveAndFlush(assignment);
 
             log.info("<== [AssignmentService.create] Asignación creada ID {}", assignment.getId());
+
+            // Notificar al repartidor si la asignación es temporal
+            AssignmentTypeEnum assignmentTypeCode = optType.get().getCode();
+            if (assignmentTypeCode == AssignmentTypeEnum.TEMPORARY) {
+                try {
+                    String title = "Nueva asignación temporal";
+                    String message = String.format("Te han asignado temporalmente a la tienda %s",
+                            optStore.get().getName());
+                    notificationService.createNotification(
+                            optDealer.get().getId(),
+                            NotificationTypeEnum.TEMP_ASSIGNMENT_CREATED,
+                            title,
+                            message,
+                            assignment.getId()
+                    );
+
+                    // También notificar a los administradores
+                    List<UserEntity> admins = userRepository.findAllByRole_RoleEnum(RoleEnum.ADMIN);
+                    for (UserEntity admin : admins) {
+                        String adminTitle = "Asignación temporal creada";
+                        String adminMessage = String.format("Se ha creado una asignación temporal para el repartidor %s %s en la tienda %s",
+                                optDealer.get().getName(),
+                                optDealer.get().getLastName(),
+                                optStore.get().getName());
+                        notificationService.createNotification(
+                                admin.getId(),
+                                NotificationTypeEnum.TEMP_ASSIGNMENT_CREATED,
+                                adminTitle,
+                                adminMessage,
+                                assignment.getId()
+                        );
+                    }
+
+                    log.info("Notificaciones enviadas por asignación temporal ID: {}", assignment.getId());
+                } catch (Exception e) {
+                    log.error("Error al enviar notificaciones de asignación: {}", e.getMessage());
+                    // No fallar la asignación si la notificación falla
+                }
+            } else {
+                // Para asignaciones permanentes, solo notificar al repartidor
+                try {
+                    String title = "Nueva asignación permanente";
+                    String message = String.format("Te han asignado permanentemente a la tienda %s",
+                            optStore.get().getName());
+                    notificationService.createNotification(
+                            optDealer.get().getId(),
+                            NotificationTypeEnum.TEMP_ASSIGNMENT_CREATED, // Usar el mismo tipo por ahora
+                            title,
+                            message,
+                            assignment.getId()
+                    );
+                    log.info("Notificación enviada al repartidor por asignación permanente ID: {}", assignment.getId());
+                } catch (Exception e) {
+                    log.error("Error al enviar notificación de asignación permanente: {}", e.getMessage());
+                }
+            }
 
             return new ResponseEntity<>(
                     new Message("Asignación creada", assignment, TypesResponse.SUCCESS),
