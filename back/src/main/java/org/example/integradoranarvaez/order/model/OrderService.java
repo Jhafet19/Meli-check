@@ -75,6 +75,17 @@ public class OrderService {
 
         log.info("==> [OrderService.createOrder] Dealer: {}, Visit: {}", currentDealerId, dto.getVisitId());
 
+        // 0. Verificar si el pedido offline ya fue sincronizado (prevenir duplicados)
+        if (dto.getOfflineUniqueId() != null && !dto.getOfflineUniqueId().isEmpty()) {
+            Optional<OrderEntity> existingOrder = orderRepository.findByOfflineUniqueId(dto.getOfflineUniqueId());
+            if (existingOrder.isPresent()) {
+                log.warn("Pedido con offlineUniqueId {} ya existe. Retornando pedido existente.", dto.getOfflineUniqueId());
+                return ResponseEntity.ok(
+                        new Message("Pedido ya existe (prevención de duplicado)", existingOrder.get(), TypesResponse.SUCCESS)
+                );
+            }
+        }
+
         // 1. Validar visita
         Optional<VisitEntity> visitOpt = visitRepository.findById(dto.getVisitId());
         if (visitOpt.isEmpty()) {
@@ -103,6 +114,7 @@ public class OrderService {
         order.setVisit(visit);
         order.setStatus(pendingStatus);
         order.setNotes(dto.getNotes());
+        order.setOfflineUniqueId(dto.getOfflineUniqueId()); // Guardar el ID único offline
         order.setIsActive(true);
         order.setCreatedAt(LocalDateTime.now());
 

@@ -27,6 +27,9 @@ public class OrderDTO {
 
     private List<OrderItemDTO> items;
 
+    // Identificador único del pedido offline (para prevenir duplicados al sincronizar)
+    private String offlineUniqueId;
+
     // Getters and Setters
 
     public Long getId() {
@@ -99,6 +102,14 @@ public class OrderDTO {
 
     public void setItems(List<OrderItemDTO> items) {
         this.items = items;
+    }
+
+    public String getOfflineUniqueId() {
+        return offlineUniqueId;
+    }
+
+    public void setOfflineUniqueId(String offlineUniqueId) {
+        this.offlineUniqueId = offlineUniqueId;
     }
 
     public static class OrderItemDTO {
