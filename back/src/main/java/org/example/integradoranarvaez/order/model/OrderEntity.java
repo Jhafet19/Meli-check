@@ -33,6 +33,10 @@ public class OrderEntity {
     @Column(name = "external_code", length = 100)
     private String externalCode;
 
+    // Identificador único del pedido offline (para prevenir duplicados al sincronizar)
+    @Column(name = "offline_unique_id", length = 100, unique = true)
+    private String offlineUniqueId;
+
     @Column(name = "order_date", nullable = false)
     private LocalDate orderDate;
 
@@ -211,5 +215,13 @@ public class OrderEntity {
 
     public void setStore(StoreEntity store) {
         this.store = store;
+    }
+
+    public String getOfflineUniqueId() {
+        return offlineUniqueId;
+    }
+
+    public void setOfflineUniqueId(String offlineUniqueId) {
+        this.offlineUniqueId = offlineUniqueId;
     }
 }

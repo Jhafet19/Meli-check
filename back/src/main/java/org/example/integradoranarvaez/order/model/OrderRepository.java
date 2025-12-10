@@ -12,6 +12,9 @@ import java.util.Optional;
 public interface OrderRepository extends JpaRepository<OrderEntity, Long> {
     boolean existsByInternalCode(String internalCode);
 
+    // Buscar pedido por su identificador único offline (para prevenir duplicados)
+    Optional<OrderEntity> findByOfflineUniqueId(String offlineUniqueId);
+
     @Query("SELECT o FROM OrderEntity o LEFT JOIN FETCH o.items WHERE o.id = :id")
     Optional<OrderEntity> findByIdWithItems(@Param("id") Long id);
 
