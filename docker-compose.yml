@@ -1,13 +1,14 @@
 services:
   database:
     image: mysql:8.0
+    command: --skip-name-resolve
     container_name: melicheck-database
     restart: always
     environment:
       MYSQL_ROOT_PASSWORD: root
       MYSQL_DATABASE: meli-check
     ports:
-      - "3307:3306"      # Exponer si quieres conectarte desde tu host
+      - "3307:3306"
     volumes:
       - melicheck-db-data:/var/lib/mysql
     networks:
@@ -22,26 +23,32 @@ services:
     depends_on:
       - database
     environment:
-      # Estas variables pisan lo que tienes en application.properties
-      DB_HOST: database          # nombre del servicio de la BD en docker-compose
+      DB_HOST: database
       DB_PORT: 3306
       DB_NAME: meli-check
       DB_USER: root
       DB_PASS: root
-
-      # Opcional: puerto y JWT desde variables:
-      SERVER_PORT: 8081          # sobreescribe server.port=8081 si quisieras cambiarlo
+      SERVER_PORT: 8081
       JWT_SECRET: feSLZrm7QpEPMc3TY9B2erBaf6lOjLny5dRUd9h4BBo
       JWT_EXPIRATION: 604800
-
-      # Por si usas perfiles
-      # SPRING_PROFILES_ACTIVE: prod
-
+    entrypoint: ["java", "-Djava.security.egd=file:/dev/./urandom", "-jar", "app.jar"]
     ports:
-      - "8081:8081"              # host:container
+      - "8081:8081"
     volumes:
-      # Para que las subidas de archivos no se pierdan al borrar el contenedor
       - ./uploads:/app/uploads
+    networks:
+      - melicheck-net
+
+  frontend:
+    build:
+      context: ./front/meli-check-front-end-main
+      dockerfile: Dockerfile
+    container_name: melicheck-frontend
+    restart: always
+    ports:
+      - "3000:80"
+    depends_on:
+      - backend
     networks:
       - melicheck-net
 

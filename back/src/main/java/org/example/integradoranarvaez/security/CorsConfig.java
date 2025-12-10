@@ -17,7 +17,8 @@ public class CorsConfig {
 
         config.setAllowedOrigins(List.of(
                 "http://localhost:5173",  // React Dev
-                "http://localhost:3000"   // Otra opción
+                "http://localhost:3000",
+                "https://front.52.3.56.173.nip.io"
         ));
         config.setAllowCredentials(true);
         config.setAllowedMethods(List.of("GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"));
